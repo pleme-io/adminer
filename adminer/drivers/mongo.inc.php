@@ -643,6 +643,11 @@ if (isset($_GET["mongo"])) {
 		if (($auth_source = getenv("MONGO_AUTH_SOURCE"))) {
 			$options["authSource"] = $auth_source;
 		}
+
+		return connect_with_retries($connection, $server, $options);
+	}
+
+	function connect_with_retries($connection, $server, $options) {
 		try {
 			$connection->_link = $connection->connect("mongodb+srv://$server", $options);
 			return $connection;
@@ -651,10 +656,14 @@ if (isset($_GET["mongo"])) {
 				$connection->_link = $connection->connect("mongodb://$server", $options);
 				return $connection;
 			} catch (Exception $ex) {
-				return $ex->getMessage();
+				if ($options["authSource"] == "") {
+					$options["authSource"] = $options["db"];
+					return connect_with_retries($connection, $server, $options);
+				} else {
+					return $ex->getMessage();
+				}
 			}
 		}
-		return $connection;
 	}
 
 	function alter_indexes($table, $alter) {
